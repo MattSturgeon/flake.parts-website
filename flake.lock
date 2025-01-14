@@ -135,7 +135,7 @@
         "type": "github"
       }
     },
-    "clan-core": {
+    "clan": {
       "inputs": {
         "disko": "disko",
         "flake-parts": [
@@ -349,7 +349,7 @@
     "disko": {
       "inputs": {
         "nixpkgs": [
-          "clan-core",
+          "clan",
           "nixpkgs"
         ]
       },
@@ -2196,7 +2196,7 @@
       "inputs": {
         "agenix-rekey": "agenix-rekey",
         "agenix-shell": "agenix-shell",
-        "clan-core": "clan-core",
+        "clan": "clan",
         "devenv": "devenv",
         "devshell": "devshell_2",
         "dream2nix_legacy": "dream2nix_legacy",
@@ -2288,7 +2288,7 @@
     "sops-nix": {
       "inputs": {
         "nixpkgs": [
-          "clan-core",
+          "clan",
           "nixpkgs"
         ]
       },
