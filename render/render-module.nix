@@ -1,6 +1,7 @@
 top@{ config, inputs, lib, flake-parts-lib, ... }:
 let
   inherit (lib)
+    mkIf
     mkOption
     types
     concatMap
@@ -407,6 +408,12 @@ in
     {
       options = {
         render = {
+          enable = mkOption {
+            type = types.bool;
+            description = "Whether to install the rendered docs to `perSystem.packages`.";
+            default = true;
+            example = false;
+          };
           inputs = mkOption {
             description = "Which modules to render.";
             type = types.attrsOf (types.submodule inputModule);
@@ -420,49 +427,59 @@ in
             '';
             readOnly = true;
           };
+          output = mkOption {
+            type = types.package;
+            description = ''
+              The generated-docs package.
+
+              Installed as `perSystem.packages.generated-docs`, unless [`enable`](#opt-perSystem.render.enable) is set to false.
+            '';
+            readOnly = true;
+          };
         };
       };
       config = {
-        packages = lib.mapAttrs' (name: inputCfg: { name = "generated-docs-${name}"; value = inputCfg.rendered; }) cfg.inputs // {
-          generated-docs =
-            pkgs.runCommand "generated-docs"
-              {
-                passthru = {
-                  inherit config;
-                  inherit eval;
-                  # This won't be in sync with the actual nixosOptionsDoc
-                  # invocations, but it's useful for troubleshooting.
-                  allOptionsPerhaps = (pkgs.nixosOptionsDoc {
-                    options = opts;
-                  }).optionsNix;
-                };
-                passAsFile = [ "menu" ];
-                menu =
-                  lib.concatStringsSep
-                    "\n"
-                    (lib.filter
-                      (x: x != "")
-                      (lib.mapAttrsToList
-                        (name: inputCfg:
-                          lib.optionalString inputCfg.menu.enable
-                            "    - [${inputCfg.menu.title}](options/${name}.md)"
-                        )
-                        cfg.inputs
-                      )
-                    );
-              }
-              ''
-                mkdir $out
-                ${lib.concatStringsSep "\n"
+        packages = mkIf cfg.enable (
+          lib.mapAttrs' (name: inputCfg: { name = "generated-docs-${name}"; value = inputCfg.rendered; }) cfg.inputs
+          // { generated-docs = cfg.render.output; }
+        );
+        render.output = pkgs.runCommand "generated-docs"
+          {
+            passthru = {
+              inherit config;
+              inherit eval;
+              # This won't be in sync with the actual nixosOptionsDoc
+              # invocations, but it's useful for troubleshooting.
+              allOptionsPerhaps = (pkgs.nixosOptionsDoc {
+                options = opts;
+              }).optionsNix;
+            };
+            passAsFile = [ "menu" ];
+            menu =
+              lib.concatStringsSep
+                "\n"
+                (lib.filter
+                  (x: x != "")
                   (lib.mapAttrsToList
-                    (name: inputCfg: ''
-                      cp ${inputCfg.rendered.file} $out/${name}.html
-                    '')
-                    cfg.inputs)
-                }
-                cp $menuPath $out/menu.md
-              '';
-        };
+                    (name: inputCfg:
+                      lib.optionalString inputCfg.menu.enable
+                        "    - [${inputCfg.menu.title}](options/${name}.md)"
+                    )
+                    cfg.inputs
+                  )
+                );
+          }
+          ''
+            mkdir $out
+            ${lib.concatStringsSep "\n"
+              (lib.mapAttrsToList
+                (name: inputCfg: ''
+                  cp ${inputCfg.rendered.file} $out/${name}.html
+                '')
+                cfg.inputs)
+            }
+            cp $menuPath $out/menu.md
+          '';
       };
     });
 }
